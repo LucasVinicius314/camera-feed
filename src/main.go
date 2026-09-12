@@ -4,9 +4,14 @@ import (
 	"io"
 	"log"
 	"net"
+	"runtime"
 
 	rtmp "github.com/yutopp/go-rtmp"
 )
+
+func init() {
+	runtime.LockOSThread()
+}
 
 const (
 	rtmpAddr  = ":1935"

@@ -133,7 +133,12 @@ var (
 	alwaysOnTop bool
 	decoderCmd  *exec.Cmd
 	decoderMu   sync.Mutex
+	decoderDone = make(chan struct{}, 1)
 )
+
+func init() {
+	decoderDone <- struct{}{} // slot available on start
+}
 
 func runWindow(onReady func()) {
 	hInstance, _, _ := procGetModuleHandle.Call(0)
@@ -286,11 +291,9 @@ func toggleAlwaysOnTop(hwnd uintptr) {
 var reDim = regexp.MustCompile(`\b(\d+)x(\d+)\b`)
 
 func startDecoder() {
-	decoderMu.Lock()
-	if decoderCmd != nil {
-		decoderMu.Unlock()
-		return
-	}
+	// wait for any previous decoder to fully exit before starting a new one
+	<-decoderDone
+	defer func() { decoderDone <- struct{}{} }()
 
 	cmd := exec.Command("ffmpeg",
 		"-fflags", "nobuffer",
@@ -303,6 +306,7 @@ func startDecoder() {
 		"-sn",
 		"pipe:1",
 	)
+	decoderMu.Lock()
 	decoderCmd = cmd
 	decoderMu.Unlock()
 
@@ -355,7 +359,6 @@ func startDecoder() {
 	decoderMu.Lock()
 	decoderCmd = nil
 	decoderMu.Unlock()
-
 	setFrame(nil, 0, 0)
 	t2, _ := windows.UTF16PtrFromString("Sauron — waiting for stream")
 	procSetWindowTextW.Call(parentHWND, uintptr(unsafe.Pointer(t2)))
