@@ -25,4 +25,3 @@ Point your camera at `rtmp://localhost:1935/live/sauron` .
 | Key | Action |
 |-----|--------|
 | T | Toggle always on top |
-w
